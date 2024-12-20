@@ -2,6 +2,7 @@ package net.oasisgames.tradeai.service;
 
 import net.oasisgames.tradeai.common.dto.*;
 import net.oasisgames.tradeai.common.mapper.StockEvaluationMapper;
+import net.oasisgames.tradeai.repository.StockEvaluationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,12 +10,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.util.Arrays;
 
 @Service
 public class OpenAIService {
 
     @Autowired
     private StockEvaluationMapper stockEvaluationMapper;
+
+    @Autowired
+    private StockEvaluationRepository stockEvaluationRepository;
 
     @Qualifier("openaiRestTemplate")
     @Autowired
@@ -33,7 +38,7 @@ public class OpenAIService {
                 new StringBuilder("Given a scale from 1 to 20, I need you to evaluate the probability of "
                         + tradeInfo.getSymbol()
                         + " hitting a stock price of " + target
-                        + " given this stock data on trades from the previous day\n");
+                        + " during the next market day given this stock data on trades from the previous day\n");
         for (int i = 0; i < tradeInfo.getStockUnitInfo().size(); i++) {
             StockUnitInfoAPIResponse stockInfo = tradeInfo.getStockUnitInfo().get(i);
             evaluationMessage.append("Stock info #").append(i + 1).append(":\n")
@@ -49,6 +54,9 @@ public class OpenAIService {
                     .append("Article Title: ").append(newsSourceData.getTitle()).append("\n")
                     .append("Article Body: ").append(newsSourceData.getBody()).append("\n");
         }
+        evaluationMessage.append("\n")
+                .append("Please give your response with no markdown symbols (like #`* etc) and give your rating"
+                        + " at the end of the message on a new line like so 'Probability Rating: x/20'");
         ChatgptAPIRequest request = new ChatgptAPIRequest(model, evaluationMessage.toString());
         ChatgptAPIResponse response = restTemplate.postForObject(apiUrl, request, ChatgptAPIResponse.class);
         if (response == null) {
@@ -59,8 +67,21 @@ public class OpenAIService {
                 null,
                 tradeInfo.getSymbol(),
                 response.getChoices().getFirst().getMessage().getContent(),
-                Instant.now());
+                Instant.now(),
+                getEvaluationScore(response.getChoices().getFirst().getMessage().getContent()));
+        System.out.println(getEvaluationScore(response.getChoices().getFirst().getMessage().getContent()));
+        stockEvaluationRepository.saveAndFlush(stockEvaluation);
         return stockEvaluationMapper.toStockEvaluationAPIResponse(stockEvaluation);
+    }
+
+    private float getEvaluationScore(String evaluationMessage) {
+        try {
+            String[] split = evaluationMessage.split("Probability Rating:");
+            return Float.parseFloat(split[1].split("/")[0]) / 20;
+        } catch (NumberFormatException e) {
+            System.out.println("Error parsing evaluation score: " + e.getMessage());
+            return -1;
+        }
     }
 
 }

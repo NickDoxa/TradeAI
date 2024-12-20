@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -26,6 +26,6 @@ public class TradeInfo {
     @Column(columnDefinition = "text")
     private String tradeInformation;
 
-    private Instant timeChecked;
+    private LocalDate timeChecked;
 
 }

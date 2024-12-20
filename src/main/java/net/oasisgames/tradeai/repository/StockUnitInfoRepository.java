@@ -13,4 +13,6 @@ public interface StockUnitInfoRepository extends JpaRepository<StockUnitInfo, UU
 
     List<StockUnitInfo> findAllByTradeInfo(TradeInfo tradeInfo);
 
+    void deleteAllByTradeInfo(TradeInfo tradeInfo);
+
 }

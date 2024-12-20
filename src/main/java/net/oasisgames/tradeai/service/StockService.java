@@ -1,15 +1,12 @@
 package net.oasisgames.tradeai.service;
 
 import com.crazzyghost.alphavantage.AlphaVantage;
-import com.crazzyghost.alphavantage.AlphaVantageException;
 import com.crazzyghost.alphavantage.Config;
 import com.crazzyghost.alphavantage.parameters.Interval;
 import com.crazzyghost.alphavantage.parameters.OutputSize;
 import com.crazzyghost.alphavantage.timeseries.response.TimeSeriesResponse;
-import jakarta.annotation.Nullable;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import net.oasisgames.tradeai.common.dto.StockUnitInfoAPIResponse;
 import net.oasisgames.tradeai.common.dto.TradeInfoAPIResponse;
 import net.oasisgames.tradeai.common.entity.StockUnitInfo;
 import net.oasisgames.tradeai.common.entity.TradeInfo;
@@ -20,7 +17,8 @@ import net.oasisgames.tradeai.repository.TradeInfoRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import javax.validation.constraints.NotNull;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,46 +36,41 @@ public class StockService {
     @Value("${alphavantage.key}")
     private String apiKey;
 
-    public void initialize() {
+    private void initialize() {
         Config alphaVantageConfig = Config.builder().key(apiKey).build();
         AlphaVantage.api().init(alphaVantageConfig);
     }
 
-    public TradeInfoAPIResponse getTradeInfo(long delay, boolean withDelay, @Nullable String symbol) {
-        try {
-            if (withDelay) Thread.sleep(delay);
-        } catch (InterruptedException e) {
-            System.out.println("Error: " + e.getMessage());
-        }
-        TradeInfo tradeInfo = symbol == null ? tradeInfoRepository.findMostRecentTradeInfo() :
-                tradeInfoRepository.findTradeInfoBySymbol(symbol);
+    public TradeInfoAPIResponse getTradeInfo(@NotNull String symbol) {
+        initialize();
+        TradeInfo tradeInfo = getStock(symbol);
         List<StockUnitInfo> stocks = stockUnitInfoRepository.findAllByTradeInfo(tradeInfo);
         TradeInfoAPIResponse tradeInfoDTO = tradeInfoMapper.toTradeInfoDTO(tradeInfo);
         tradeInfoDTO.setStockUnitInfo(stocks.stream().map(stockUnitInfoMapper::toDto).toList());
         return tradeInfoDTO;
     }
 
-    public void getStock(String symbol) {
-        AlphaVantage.api().timeSeries()
+    private TradeInfo getStock(String symbol) {
+        TradeInfo output = tradeInfoRepository.findTradeInfoBySymbol(symbol);
+        if (tradeInfoRepository.findTradeInfoBySymbol(symbol) != null) {
+            if (output.getTimeChecked().isBefore(LocalDate.now())) {
+                tradeInfoRepository.delete(output);
+                stockUnitInfoRepository.deleteAllByTradeInfo(output);
+            } else return output;
+        }
+        TimeSeriesResponse response = AlphaVantage.api().timeSeries()
                 .intraday()
                 .forSymbol(symbol)
                 .interval(Interval.FIVE_MIN)
                 .outputSize(OutputSize.COMPACT)
-                .onSuccess(e -> handleSuccess((TimeSeriesResponse) e))
-                .onFailure(this::handleFailure)
-                .fetch();
-    }
-
-    private void handleSuccess(TimeSeriesResponse timeSeriesResponse) {
+                .fetchSync();
         TradeInfo tradeInfo = TradeInfo.builder()
-                .symbol(timeSeriesResponse.getMetaData().getSymbol())
+                .symbol(response.getMetaData().getSymbol())
                 .tradeInformation("Trade Information")
-                .timeChecked(Instant.now())
+                .timeChecked(LocalDate.now())
                 .build();
-
-        tradeInfoRepository.saveAndFlush(tradeInfo);
-
-        Set<StockUnitInfo> stocks = timeSeriesResponse.getStockUnits()
+        output = tradeInfoRepository.saveAndFlush(tradeInfo);
+        Set<StockUnitInfo> stocks = response.getStockUnits()
                 .stream()
                 .map(stockUnit -> StockUnitInfo.builder()
                         .open(stockUnit.getOpen())
@@ -89,11 +82,6 @@ public class StockService {
                 .collect(Collectors.toSet());
 
         stockUnitInfoRepository.saveAllAndFlush(stocks);
+        return output;
     }
-
-    private void handleFailure(AlphaVantageException e) {
-        System.out.println("Failed to retrieve stock data");
-        System.out.println("Error: " + e.getMessage());
-    }
-
 }

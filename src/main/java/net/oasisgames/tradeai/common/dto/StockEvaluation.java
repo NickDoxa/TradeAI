@@ -28,4 +28,6 @@ public class StockEvaluation {
 
     private Instant evaluationTime;
 
+    private float evaluationScore;
+
 }

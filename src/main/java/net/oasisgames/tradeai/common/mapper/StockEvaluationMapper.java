@@ -11,6 +11,7 @@ public interface StockEvaluationMapper {
     @Mapping(target = "symbol", source = "symbol")
     @Mapping(target = "evaluationResponse", source = "evaluationResponse")
     @Mapping(target = "evaluationTime", source = "evaluationTime")
+    @Mapping(target = "evaluationScore", source = "evaluationScore")
     StockEvaluationAPIResponse toStockEvaluationAPIResponse(StockEvaluation stockEvaluation);
 
 }

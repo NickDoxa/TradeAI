@@ -1,0 +1,75 @@
+@import 'primeicons/primeicons.css';
+@import 'fonts.css';
+
+html {
+  margin: 0 !important;
+  padding: 0;
+  color: white;
+}
+
+body {
+  margin: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  padding: 0;
+  font-family: CandyFlossBody, sans-serif;
+  font-size: 16px;
+  background: rgb(28,28,28);
+  background: linear-gradient(180deg, rgba(28,28,28,1) 0%, rgba(9,39,85,1) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.heading-font {
+  font-family: HeadingFont, sans-serif;
+  color: var(--p-sky-400)
+}
+
+.body-font {
+  font-family: BodyFont, sans-serif;
+  color: var(--p-sky-100)
+}
+
+/* ANIMATIONS */
+
+.animate-fadein {
+  opacity: 1;
+  animation-name: fadein;
+  animation-iteration-count: 1;
+  animation-timing-function: ease-in;
+  animation-duration: 0.5s;
+}
+
+.animate-fadeout {
+  opacity: 0;
+  animation-name: fadeout;
+  animation-iteration-count: 1;
+  animation-timing-function: ease-in;
+  animation-duration: 0.5s;
+}
+
+.rotating-anim {
+  transition: all 0.2s ease-in-out;
+}
+
+.rotating-anim:hover {
+  transform: rotate3d(-0.3, 1, 0.3, 25deg);
+}
+
+@keyframes fadein {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeout {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

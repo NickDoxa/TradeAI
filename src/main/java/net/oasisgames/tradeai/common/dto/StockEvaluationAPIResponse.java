@@ -10,5 +10,6 @@ public class StockEvaluationAPIResponse {
     private String symbol;
     private String evaluationResponse;
     private Instant evaluationTime;
+    private float evaluationScore;
 
 }

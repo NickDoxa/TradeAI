@@ -1,0 +1,9 @@
+@font-face {
+    font-family: BodyFont, sans-serif;
+    src: url('./fonts/body.ttf');
+}
+
+@font-face {
+    font-family: HeadingFont, sans-serif;
+    src: url('./fonts/heading.otf');
+}
